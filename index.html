@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDFKit Online - 100% Privacy Client-Side Engine</title>
+    <title>PDFKit Online - Pro Local Sandbox Edition</title>
     <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
         body { background-color: #f8fafc; color: #0f172a; padding: 2rem 1rem; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
@@ -14,8 +15,8 @@
         header p { color: #64748b; margin-top: 0.5rem; }
         .privacy-badge { display: inline-block; background: #dcfce7; color: #15803d; font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.75rem; border-radius: 20px; margin-top: 0.5rem; text-transform: uppercase; }
 
-        .container { width: 100%; max-width: 1000px; display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
-        @media (min-width: 768px) { .container { grid-template-columns: 1fr 2fr; } }
+        .container { width: 100%; max-width: 1100px; display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+        @media (min-width: 768px) { .container { grid-template-columns: 1fr 2.5fr; } }
 
         .card { background: #ffffff; padding: 1.5rem; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); height: fit-content; }
         .card-title { font-size: 0.9rem; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 2px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
@@ -31,16 +32,32 @@
         .file-dropzone:hover { border-color: #2563eb; }
         .file-dropzone input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
 
-        .btn-action { background: #2563eb; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; transition: background 0.2s; }
+        .btn-action { background: #2563eb; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; transition: background 0.2s; margin-top: 1rem; }
         .btn-action:hover { background: #1d4ed8; }
         .btn-action:disabled { background: #cbd5e1; cursor: not-allowed; }
 
-        .file-badge-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; max-height: 150px; overflow-y: auto; }
-        .file-badge { background: #f1f5f9; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; font-family: monospace; color: #334155; border: 1px solid #e2e8f0; }
+        /* [1] SORTABLE DRAGGABLE REORDER LIST STYLES */
+        .file-badge-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; }
+        .file-badge { background: #f1f5f9; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; color: #334155; border: 1px solid #e2e8f0; cursor: grab; user-select: none; transition: transform 0.2s, background-color 0.2s; }
+        .file-badge:active { cursor: grabbing; background-color: #eff6ff; transform: scale(0.99); }
+        .file-badge .drag-handle { color: #94a3b8; font-weight: bold; margin-right: 0.5rem; font-size: 1.1rem; }
+        .file-badge .file-meta { display: flex; align-items: center; flex-grow: 1; min-width: 0; }
+        .file-badge .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: monospace; }
+        .file-badge .btn-delete-node { background: #fee2e2; color: #ef4444; border: none; padding: 0.25rem 0.5rem; border-radius: 4px; font-weight: 700; cursor: pointer; font-size: 0.75rem; transition: background 0.2s; margin-left: 0.5rem; }
+        .file-badge .btn-delete-node:hover { background: #fca5a5; }
 
-        /* Canvas Draw / Sign Overlay elements */
+        /* [2] INTERACTIVE CONVERTED FORM VIEWER */
+        .pdf-interactive-render-container { position: relative; border: 1px solid #cbd5e1; background: #64748b; border-radius: 8px; padding: 1rem; max-height: 600px; overflow-y: auto; display: flex; flex-direction: column; align-items: center; gap: 1.5rem; margin-top: 1rem; box-shadow: inset 0 2px 4px rgba(0,0,0,0.06); }
+        .page-wrapper { position: relative; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); margin-bottom: 0.5rem; }
+        .form-overlay-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+        
+        /* Direct Interactive Online Form Inputs overlay */
+        .generated-form-input { position: absolute; border: 1px solid rgba(37, 99, 235, 0.3); background-color: rgba(219, 234, 254, 0.45); color: #0f172a; font-size: 11px; padding: 2px; box-sizing: border-box; border-radius: 2px; pointer-events: auto; transition: background-color 0.2s, border-color 0.2s; }
+        .generated-form-input:focus { background-color: rgba(255, 255, 255, 1); border-color: #2563eb; outline: none; box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2); }
+
+        /* Signature Canvas Layout */
         .signature-box { border: 1px solid #cbd5e1; background: white; border-radius: 8px; margin-bottom: 1rem; position: relative; width: 100%; height: 200px; touch-action: none; }
-        canvas { width: 100%; height: 100%; display: block; border-radius: 8px; cursor: crosshair; }
+        canvas.sig-canvas-layer { width: 100%; height: 100%; display: block; border-radius: 8px; cursor: crosshair; }
         .canvas-controls { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
         .btn-sub { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; color: #475569; }
         .btn-sub:hover { background: #e2e8f0; }
@@ -58,7 +75,7 @@
 
     <header>
         <h1>PDFKit Privacy Engine</h1>
-        <p>Advanced batch operations executed entirely in browser memory. Local sandboxing keeps data anonymous.</p>
+        <p>Convert flat documents to interactive forms, reorder layers, and merge files entirely in local memory.</p>
         <span class="privacy-badge">🔒 100% Client-Side Sandbox</span>
     </header>
 
@@ -67,8 +84,8 @@
             <div class="card-title">🛠️ Tool Matrix</div>
             <div class="menu-list">
                 <button class="menu-btn active" onclick="switchToolPanel('merge')">📂 Batch Merge PDFs</button>
+                <button class="menu-btn" onclick="switchToolPanel('forms')">📝 Convert to Fillable Form</button>
                 <button class="menu-btn" onclick="switchToolPanel('split')">✂️ Split PDF Pages</button>
-                <button class="menu-btn" onclick="switchToolPanel('forms')">📝 Form Fill & Flatten</button>
                 <button class="menu-btn" onclick="switchToolPanel('sign')">✍️ Draw & Inject Signatures</button>
             </div>
         </div>
@@ -76,17 +93,33 @@
         <div class="card" style="width:100%;">
             
             <div id="panel-merge" class="workspace-panel active">
-                <div class="card-title">📂 High-Capacity Batch Merge (Supports up to 50+ Files)</div>
+                <div class="card-title">📂 Batch Merge (Drag to Reorder, Click to Delete)</div>
                 <div class="file-dropzone">
-                    <p> Drag & Drop or Click to Add Multiple PDFs</p>
+                    <p>Drag & Drop or Click to Add PDFs</p>
                     <input type="file" id="input-merge-files" accept="application/pdf" multiple onchange="handleFileSelections('merge')">
                 </div>
-                <div class="file-badge-list" id="list-merge-files"></div>
+                <div class="file-badge-list" id="list-merge-files" ondragover="allowListDrop(event)"></div>
                 <button class="btn-action" id="btn-run-merge" disabled onclick="processPdfBatchMerge()">Merge Documents</button>
             </div>
 
+            <div id="panel-forms" class="workspace-panel">
+                <div class="card-title">📝 Convert Plain Print Forms to Fillable Fields</div>
+                <p style="font-size: 0.85rem; color:#64748b; margin-bottom: 1rem;">
+                    Upload any traditional non-interactive PDF. Our layout engine parses field rows automatically, converting flat forms into editable browser fields instantly.
+                </p>
+                <div class="file-dropzone">
+                    <p>Load Flat or Traditional PDF Form</p>
+                    <input type="file" id="input-form-file" accept="application/pdf" onchange="handleFileSelections('forms')">
+                </div>
+                <div class="file-badge-list" id="list-form-file"></div>
+                
+                <div class="pdf-interactive-render-container" id="form-render-workspace" style="display:none;"></div>
+                
+                <button class="btn-action" id="btn-run-forms" disabled onclick="processFormFlattenAndSave()">Save Completed Form</button>
+            </div>
+
             <div id="panel-split" class="workspace-panel">
-                <div class="card-title">✂️ Discrete Page Extraction / Splitting</div>
+                <div class="card-title">✂️ Discrete Page Extraction</div>
                 <div class="file-dropzone">
                     <p>Select Target PDF to Extract Pages From</p>
                     <input type="file" id="input-split-file" accept="application/pdf" onchange="handleFileSelections('split')">
@@ -101,28 +134,17 @@
                 <button class="btn-action" id="btn-run-split" disabled onclick="processPdfSplit()">Extract Specified Range</button>
             </div>
 
-            <div id="panel-forms" class="workspace-panel">
-                <div class="card-title">📝 Client-Side AcroForm Interactive Filler</div>
-                <div class="file-dropzone">
-                    <p>Load Fillable AcroForm Document Structure</p>
-                    <input type="file" id="input-form-file" accept="application/pdf" onchange="handleFileSelections('forms')">
-                </div>
-                <div class="file-badge-list" id="list-form-file"></div>
-                <div id="form-interactive-fields-container" style="margin-bottom:1rem; display:flex; flex-direction:column; gap:0.75rem;"></div>
-                <button class="btn-action" id="btn-run-forms" disabled onclick="processFormFlattenAndSave()">Flatten & Save Form</button>
-            </div>
-
             <div id="panel-sign" class="workspace-panel">
-                <div class="card-title">✍️ Interactive Vector Signature Placement</div>
+                <div class="card-title">✍️ Vector Signature Placement</div>
                 <div class="file-dropzone">
                     <p>Upload PDF to Digitally Sign</p>
                     <input type="file" id="input-sign-file" accept="application/pdf" onchange="handleFileSelections('sign')">
                 </div>
                 <div class="file-badge-list" id="list-sign-file"></div>
                 
-                <label style="font-size:0.85rem; font-weight:600; color:#475569; display:block; margin-bottom:0.4rem;">Draw your signature inside the sandbox canvas below:</label>
+                <label style="font-size:0.85rem; font-weight:600; color:#475569; display:block; margin-bottom:0.4rem;">Draw signature inside sandbox canvas:</label>
                 <div class="signature-box">
-                    <canvas id="signatureCanvas"></canvas>
+                    <canvas id="signatureCanvas" class="sig-canvas-layer"></canvas>
                 </div>
                 <div class="canvas-controls">
                     <button class="btn-sub" onclick="clearDrawCanvas()">Clear Canvas</button>
@@ -137,20 +159,21 @@
     </div>
 
     <script>
-        // Internal Staging State Cache Matrix
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
         let globalState = {
             mergeFiles: [],
             splitFile: null,
             formFile: null,
             signFile: null,
-            formFieldsRef: null,
-            activePdfLibDoc: null
+            formFieldsData: [], // Stores coordinates of fields generated
+            formBytesCache: null
         };
 
-        // Canvas Sketch Initialization
         const canvas = document.getElementById('signatureCanvas');
         const ctx = canvas.getContext('2d');
         let isDrawing = false;
+        let draggedItemIndex = null;
 
         function initializeCanvasSizing() {
             canvas.width = canvas.parentElement.clientWidth;
@@ -160,10 +183,6 @@
             ctx.strokeStyle = '#000000';
         }
 
-        window.addEventListener('resize', initializeCanvasSizing);
-        setTimeout(initializeCanvasSizing, 200);
-
-        // Track Pointer Actions on Canvas Context
         function getPointerPos(e) {
             const rect = canvas.getBoundingClientRect();
             const clientX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -171,35 +190,19 @@
             return { x: clientX - rect.left, y: clientY - rect.top };
         }
 
-        function startDrawing(e) {
-            isDrawing = true;
-            const pos = getPointerPos(e);
-            ctx.beginPath();
-            ctx.moveTo(pos.x, pos.y);
-        }
-
-        function draw(e) {
-            if (!isDrawing) return;
-            e.preventDefault();
-            const pos = getPointerPos(e);
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
-        }
-
+        function startDrawing(e) { isDrawing = true; const pos = getPointerPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); }
+        function draw(e) { if (!isDrawing) return; e.preventDefault(); const pos = getPointerPos(e); ctx.lineTo(pos.x, pos.y); ctx.stroke(); }
         function stopDrawing() { isDrawing = false; }
 
         canvas.addEventListener('mousedown', startDrawing);
         canvas.addEventListener('mousemove', draw);
         canvas.addEventListener('mouseup', stopDrawing);
         canvas.addEventListener('mouseleave', stopDrawing);
-
         canvas.addEventListener('touchstart', startDrawing, {passive: false});
         canvas.addEventListener('touchmove', draw, {passive: false});
         canvas.addEventListener('touchend', stopDrawing);
 
-        function clearDrawCanvas() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-        }
+        function clearDrawCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
         function switchToolPanel(panelId) {
             document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
@@ -216,54 +219,228 @@
             monitor.innerText = text;
         }
 
-        function hideFeedbackMonitor() {
-            document.getElementById('statusReportingMonitor').style.display = 'none';
-        }
+        function hideFeedbackMonitor() { document.getElementById('statusReportingMonitor').style.display = 'none'; }
 
-        // Parse local storage allocations safely
         function handleFileSelections(mode) {
             hideFeedbackMonitor();
             if (mode === 'merge') {
                 const files = Array.from(document.getElementById('input-merge-files').files);
                 globalState.mergeFiles = [...globalState.mergeFiles, ...files];
-                renderFileBadges('merge', globalState.mergeFiles);
-                document.getElementById('btn-run-merge').disabled = globalState.mergeFiles.length < 2;
+                renderMergeListBadges();
             }
             if (mode === 'split') {
                 globalState.splitFile = document.getElementById('input-split-file').files[0];
-                renderFileBadges('split', globalState.splitFile ? [globalState.splitFile] : []);
+                renderSingleBadge('split', globalState.splitFile);
                 document.getElementById('btn-run-split').disabled = !globalState.splitFile;
             }
             if (mode === 'forms') {
                 globalState.formFile = document.getElementById('input-form-file').files[0];
-                renderFileBadges('forms', globalState.formFile ? [globalState.formFile] : []);
-                if (globalState.formFile) parseInteractiveAcroFormFields();
+                renderSingleBadge('forms', globalState.formFile);
+                if (globalState.formFile) generateInteractiveFillableForm();
             }
             if (mode === 'sign') {
                 globalState.signFile = document.getElementById('input-sign-file').files[0];
-                renderFileBadges('sign', globalState.signFile ? [globalState.signFile] : []);
+                renderSingleBadge('sign', globalState.signFile);
                 document.getElementById('btn-run-sign').disabled = !globalState.signFile;
             }
         }
 
-        function renderFileBadges(mode, fileArray) {
-            const listEl = document.getElementById(`list-${mode}-files` || `list-${mode}-file`);
-            const fallbackEl = document.getElementById(`list-${mode}-file`);
-            const targetList = listEl || fallbackEl;
+        // [1] RENDER MERGE ELEMENTS WITH DELETION AND DRAG REORDERING HOOKS
+        function renderMergeListBadges() {
+            const targetList = document.getElementById('list-merge-files');
             targetList.innerHTML = '';
-            fileArray.forEach((file, index) => {
+            
+            globalState.mergeFiles.forEach((file, index) => {
                 const badge = document.createElement('div');
                 badge.className = 'file-badge';
-                badge.innerHTML = `<span>📄 ${file.name} (${(file.size/1024).toFixed(1)} KB)</span>`;
+                badge.draggable = true;
+                badge.dataset.index = index;
+                
+                badge.innerHTML = `
+                    <div class="file-meta">
+                        <span class="drag-handle">☰</span>
+                        <span class="file-name">${index + 1}. ${file.name} (${(file.size/1024).toFixed(1)} KB)</span>
+                    </div>
+                    <button class="btn-delete-node" onclick="deleteMergeNode(${index})">Remove</button>
+                `;
+
+                badge.addEventListener('dragstart', (e) => {
+                    draggedItemIndex = index;
+                    e.dataTransfer.effectAllowed = 'move';
+                });
+
+                badge.addEventListener('dragover', (e) => { e.preventDefault(); });
+
+                badge.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    if (draggedItemIndex !== null && draggedItemIndex !== index) {
+                        const draggedItem = globalState.mergeFiles[draggedItemIndex];
+                        globalState.mergeFiles.splice(draggedItemIndex, 1);
+                        globalState.mergeFiles.splice(index, 0, draggedItem);
+                        draggedItemIndex = null;
+                        renderMergeListBadges();
+                    }
+                });
+
                 targetList.appendChild(badge);
             });
+            document.getElementById('btn-run-merge').disabled = globalState.mergeFiles.length < 2;
         }
 
-        // --- CORE PDF-LIB ENGINES ---
+        function deleteMergeNode(index) {
+            globalState.mergeFiles.splice(index, 1);
+            renderMergeListBadges();
+        }
 
+        function allowListDrop(e) { e.preventDefault(); }
+
+        function renderSingleBadge(mode, file) {
+            const targetList = document.getElementById(`list-${mode}-file`);
+            targetList.innerHTML = '';
+            if(file) {
+                targetList.innerHTML = `
+                    <div class="file-badge">
+                        <span class="file-name">📄 ${file.name}</span>
+                        <button class="btn-delete-node" onclick="clearSingleFileSelection('${mode}')">Clear</button>
+                    </div>
+                `;
+            }
+        }
+
+        function clearSingleFileSelection(mode) {
+            globalState[`${mode}File`] = null;
+            renderSingleBadge(mode, null);
+            document.getElementById(`btn-run-${mode}`).disabled = true;
+            if(mode === 'forms') {
+                document.getElementById('form-render-workspace').style.display = 'none';
+            }
+        }
+
+        // [2] INTERACTIVE IN-BROWSER FILLABLE CONVERSION LAYER GENERATOR
+        async function generateInteractiveFillableForm() {
+            try {
+                showFeedbackMonitor("Analyzing layout fields...", "working");
+                const workspace = document.getElementById('form-render-workspace');
+                workspace.innerHTML = '';
+                workspace.style.display = 'flex';
+                globalState.formFieldsData = [];
+
+                globalState.formBytesCache = await globalState.formFile.arrayBuffer();
+                
+                // Load documents via canvas rendering vector
+                const loadingTask = pdfjsLib.getDocument({ data: globalState.formBytesCache });
+                const pdf = await loadingTask.promise;
+                
+                for(let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+                    const page = await pdf.getPage(pageNum);
+                    const viewport = page.getViewport({ scale: 1.3 });
+
+                    // Outer element geometry mapping
+                    const pageWrapper = document.createElement('div');
+                    pageWrapper.className = 'page-wrapper';
+                    pageWrapper.style.width = `${viewport.width}px`;
+                    pageWrapper.style.height = `${viewport.height}px`;
+
+                    const canvasLayer = document.createElement('canvas');
+                    canvasLayer.width = viewport.width;
+                    canvasLayer.height = viewport.height;
+                    const canvasCtx = canvasLayer.getContext('2d');
+
+                    const renderContext = { canvasContext: canvasCtx, viewport: viewport };
+                    await page.render(renderContext).promise;
+                    pageWrapper.appendChild(canvasLayer);
+
+                    // Overlay layer to track active online fill elements
+                    const overlayLayer = document.createElement('div');
+                    overlayLayer.className = 'form-overlay-layer';
+                    overlayLayer.style.width = `${viewport.width}px`;
+                    overlayLayer.style.height = `${viewport.height}px`;
+
+                    // Smart scanning mechanism for print templates
+                    const textContent = await page.getTextContent();
+                    const lineTriggers = [":", "____", "Name", "Date", "Address", "Email", "Sign", "Phone"];
+
+                    textContent.items.forEach((item, idx) => {
+                        const matchFound = lineTriggers.some(trigger => item.str.includes(trigger));
+                        if(matchFound && item.transform) {
+                            const tx = pdfjsLib.Util.transform(viewport.transform, item.transform);
+                            
+                            // Map coordinates to standard responsive viewport space
+                            const fieldX = tx[4];
+                            const fieldY = viewport.height - tx[5] - 5; 
+                            const fieldWidth = Math.max(160, viewport.width - fieldX - 40);
+                            const fieldHeight = 18;
+
+                            // Protect boundaries within the page container
+                            if (fieldX > 0 && fieldX + fieldWidth < viewport.width && fieldY > 0 && fieldY + fieldHeight < viewport.height) {
+                                const inputNode = document.createElement('input');
+                                inputNode.type = "text";
+                                inputNode.className = "generated-form-input";
+                                inputNode.style.left = `${fieldX}px`;
+                                inputNode.style.top = `${fieldY}px`;
+                                inputNode.style.width = `${fieldWidth}px`;
+                                inputNode.style.height = `${fieldHeight}px`;
+
+                                const trackingId = `f_${pageNum}_${idx}`;
+                                inputNode.id = trackingId;
+
+                                overlayLayer.appendChild(inputNode);
+
+                                globalState.formFieldsData.push({
+                                    id: trackingId,
+                                    pageIndex: pageNum - 1,
+                                    x: fieldX / 1.3,
+                                    y: (viewport.height - fieldY - fieldHeight) / 1.3,
+                                    width: fieldWidth / 1.3,
+                                    height: fieldHeight / 1.3
+                                });
+                            }
+                        }
+                    });
+
+                    pageWrapper.appendChild(overlayLayer);
+                    workspace.appendChild(pageWrapper);
+                }
+
+                document.getElementById('btn-run-forms').disabled = false;
+                showFeedbackMonitor("Conversion complete. You can now fill out all blanks entirely online.", "success");
+            } catch (err) {
+                showFeedbackMonitor(`Conversion fault: ${err.message}`, "working");
+            }
+        }
+
+        async function processFormFlattenAndSave() {
+            try {
+                showFeedbackMonitor("Baking inputs into final layout layer...", "working");
+                const doc = await PDFLib.PDFDocument.load(globalState.formBytesCache);
+                const pages = doc.getPages();
+
+                // Inject client-typed content onto standard coordinates natively
+                globalState.formFieldsData.forEach(fieldData => {
+                    const inputEl = document.getElementById(fieldData.id);
+                    if (inputEl && inputEl.value.trim() !== "") {
+                        const targetPage = pages[fieldData.pageIndex];
+                        targetPage.drawText(inputEl.value.trim(), {
+                            x: fieldData.x + 4,
+                            y: fieldData.y + 3,
+                            size: 10,
+                            color: PDFLib.rgb(0.05, 0.05, 0.1)
+                        });
+                    }
+                });
+
+                const outputBytes = await doc.save();
+                triggerLocalDownload(outputBytes, `pdfkit_filled_document.pdf`);
+                showFeedbackMonitor("Document filled and exported safely without printing.", "success");
+            } catch (err) {
+                showFeedbackMonitor(`Export failure: ${err.message}`, "working");
+            }
+        }
+
+        // --- BATCH MERGE ENGINE ---
         async function processPdfBatchMerge() {
             try {
-                showFeedbackMonitor("Processing local data assembly matrix...", "working");
+                showFeedbackMonitor("Merging dynamic file array sequence...", "working");
                 const mergedPdf = await PDFLib.PDFDocument.create();
                 
                 for (const file of globalState.mergeFiles) {
@@ -274,16 +451,17 @@
                 }
 
                 const outputBytes = await mergedPdf.save();
-                triggerLocalDownload(outputBytes, `pdfkit_merged_${Date.now()}.pdf`);
-                showFeedbackMonitor("Batch operation completed inside memory space successfully.", "success");
+                triggerLocalDownload(outputBytes, `pdfkit_merged.pdf`);
+                showFeedbackMonitor("All files unified successfully based on specified order configuration.", "success");
             } catch (err) {
-                showFeedbackMonitor(`Operation fault: ${err.message}`, "working");
+                showFeedbackMonitor(`Merge failed: ${err.message}`, "working");
             }
         }
 
+        // --- EXTRACT ENGINE ---
         async function processPdfSplit() {
             try {
-                showFeedbackMonitor("Extracting layout subsets...", "working");
+                showFeedbackMonitor("Isolating selected page subsets...", "working");
                 const startRange = parseInt(document.getElementById('split-range-start').value) - 1;
                 const endRange = parseInt(document.getElementById('split-range-end').value) - 1;
 
@@ -292,7 +470,7 @@
                 const totalPages = sourceDoc.getPageCount();
 
                 if (startRange < 0 || endRange >= totalPages || startRange > endRange) {
-                    throw new Error(`Invalid page bounds. This document contains exactly ${totalPages} pages.`);
+                    throw new Error(`Out of range bounds. This file has exactly ${totalPages} pages.`);
                 }
 
                 const splitPdf = await PDFLib.PDFDocument.create();
@@ -301,120 +479,35 @@
                 copiedPages.forEach(p => splitPdf.addPage(p));
 
                 const outputBytes = await splitPdf.save();
-                triggerLocalDownload(outputBytes, `pdfkit_extracted_${Date.now()}.pdf`);
-                showFeedbackMonitor("Pages isolated successfully.", "success");
+                triggerLocalDownload(outputBytes, `pdfkit_split_output.pdf`);
+                showFeedbackMonitor("Extraction sequence finalized safely.", "success");
             } catch (err) {
-                showFeedbackMonitor(`Operation fault: ${err.message}`, "working");
+                showFeedbackMonitor(`Split exception: ${err.message}`, "working");
             }
         }
 
-        async function parseInteractiveAcroFormFields() {
-            try {
-                showFeedbackMonitor("Parsing interactive Form structure schemas...", "working");
-                const container = document.getElementById('form-interactive-fields-container');
-                container.innerHTML = '';
-                
-                const bytes = await globalState.formFile.arrayBuffer();
-                globalState.activePdfLibDoc = await PDFLib.PDFDocument.load(bytes);
-                
-                const form = globalState.activePdfLibDoc.getForm();
-                const fields = form.getFields();
-
-                if(fields.length === 0) {
-                    container.innerHTML = `<p style="font-size:0.85rem; color:#ef4444; font-weight:600;">⚠️ Notice: No native interactive AcroForm fields detected. Rendering basic structure.</p>`;
-                    document.getElementById('btn-run-forms').disabled = false;
-                    return;
-                }
-
-                fields.forEach(field => {
-                    const type = field.constructor.name;
-                    const name = field.getName();
-                    
-                    const fieldWrapper = document.createElement('div');
-                    fieldWrapper.style.cssText = "display:flex; flex-direction:column; gap:0.25rem;";
-                    
-                    const label = document.createElement('label');
-                    label.style.cssText = "font-size:0.8rem; font-weight:700; color:#475569;";
-                    label.innerText = `Field: ${name} [${type.replace('PDF','')}]`;
-                    
-                    const input = document.createElement('input');
-                    input.type = "text";
-                    input.className = "acro-dynamic-input";
-                    input.dataset.fieldName = name;
-                    input.style.cssText = "padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px;";
-                    
-                    fieldWrapper.appendChild(label);
-                    fieldWrapper.appendChild(input);
-                    container.appendChild(fieldWrapper);
-                });
-
-                document.getElementById('btn-run-forms').disabled = false;
-                showFeedbackMonitor(`Detected ${fields.length} map paths. Form ready to fill.`, "success");
-            } catch (err) {
-                showFeedbackMonitor(`Interactive Exception: ${err.message}`, "working");
-            }
-        }
-
-        async function processFormFlattenAndSave() {
-            try {
-                showFeedbackMonitor("Serializing variable arrays into binary space...", "working");
-                const form = globalState.activePdfLibDoc.getForm();
-                const textInputs = document.querySelectorAll('.acro-dynamic-input');
-                
-                textInputs.forEach(input => {
-                    const fieldName = input.dataset.fieldName;
-                    const val = input.value.trim();
-                    if(val) {
-                        try {
-                            const field = form.getTextField(fieldName);
-                            field.setText(val);
-                        } catch(e) {
-                            // Suppress type mismatches for non-text components elegantly
-                        }
-                    }
-                });
-
-                // Flatten elements into uneditable vectors for print safety
-                form.flatten();
-                
-                const outputBytes = await globalState.activePdfLibDoc.save();
-                triggerLocalDownload(outputBytes, `pdfkit_filled_flattened_${Date.now()}.pdf`);
-                showFeedbackMonitor("Form fields parsed and locked successfully.", "success");
-            } catch (err) {
-                showFeedbackMonitor(`Processing failure: ${err.message}`, "working");
-            }
-        }
-
+        // --- SIGNATURE PLACEMENT ENGINE ---
         async function processPdfSignatureInjection() {
             try {
-                showFeedbackMonitor("Compiling vector raster parameters...", "working");
+                showFeedbackMonitor("Injecting signature vector data...", "working");
                 const bytes = await globalState.signFile.arrayBuffer();
                 const doc = await PDFLib.PDFDocument.load(bytes);
                 
-                // Convert internal vector snapshot arrays to PNG matrix formats
                 const dataUrl = canvas.toDataURL('image/png');
                 const sigImageBytes = await fetch(dataUrl).then(res => res.arrayBuffer());
                 const pngImage = await doc.embedPng(sigImageBytes);
 
                 const pages = doc.getPages();
-                if (pages.length === 0) throw new Error("Document structure lacks valid page dimensions.");
+                if (pages.length === 0) throw new Error("File structure has no readable page dimensions.");
                 
                 const firstPage = pages[0];
-                const { width, height } = firstPage.getSize();
-
-                // Draw signature into bottom left quadrant predictably
-                firstPage.drawImage(pngImage, {
-                    x: 50,
-                    y: 50,
-                    width: 200,
-                    height: 80,
-                });
+                firstPage.drawImage(pngImage, { x: 50, y: 50, width: 200, height: 80 });
 
                 const outputBytes = await doc.save();
-                triggerLocalDownload(outputBytes, `pdfkit_signed_${Date.now()}.pdf`);
-                showFeedbackMonitor("Signature stamped successfully onto Page 1.", "success");
+                triggerLocalDownload(outputBytes, `pdfkit_signed_output.pdf`);
+                showFeedbackMonitor("Signature embedded successfully onto Page 1.", "success");
             } catch (err) {
-                showFeedbackMonitor(`Processing failure: ${err.message}`, "working");
+                showFeedbackMonitor(`Signature fail: ${err.message}`, "working");
             }
         }
 
