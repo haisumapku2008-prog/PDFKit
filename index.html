@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDFKit Online - 100% Privacy Client-Side Engine</title>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background-color: #f8fafc; color: #0f172a; padding: 2rem 1rem; min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+        
+        header { margin-bottom: 2rem; text-align: center; max-width: 800px; }
+        header h1 { font-size: 2.25rem; font-weight: 800; letter-spacing: -0.025em; color: #1e293b; }
+        header p { color: #64748b; margin-top: 0.5rem; }
+        .privacy-badge { display: inline-block; background: #dcfce7; color: #15803d; font-size: 0.75rem; font-weight: 700; padding: 0.25rem 0.75rem; border-radius: 20px; margin-top: 0.5rem; text-transform: uppercase; }
+
+        .container { width: 100%; max-width: 1000px; display: grid; grid-template-columns: 1fr; gap: 1.5rem; }
+        @media (min-width: 768px) { .container { grid-template-columns: 1fr 2fr; } }
+
+        .card { background: #ffffff; padding: 1.5rem; border-radius: 12px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); height: fit-content; }
+        .card-title { font-size: 0.9rem; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 2px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; }
+
+        .menu-list { display: flex; flex-direction: column; gap: 0.5rem; }
+        .menu-btn { background: #f8fafc; border: 1px solid #e2e8f0; text-align: left; padding: 0.75rem 1rem; border-radius: 8px; font-weight: 600; color: #475569; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.5rem; }
+        .menu-btn:hover, .menu-btn.active { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
+
+        .workspace-panel { display: none; }
+        .workspace-panel.active { display: block; }
+
+        .file-dropzone { border: 2px dashed #cbd5e1; background: #f8fafc; padding: 2rem 1rem; text-align: center; border-radius: 8px; cursor: pointer; transition: border-color 0.2s; margin-bottom: 1rem; position: relative; }
+        .file-dropzone:hover { border-color: #2563eb; }
+        .file-dropzone input { position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; }
+
+        .btn-action { background: #2563eb; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer; width: 100%; display: flex; justify-content: center; align-items: center; gap: 0.5rem; transition: background 0.2s; }
+        .btn-action:hover { background: #1d4ed8; }
+        .btn-action:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+        .file-badge-list { display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1rem; max-height: 150px; overflow-y: auto; }
+        .file-badge { background: #f1f5f9; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.85rem; display: flex; justify-content: space-between; align-items: center; font-family: monospace; color: #334155; border: 1px solid #e2e8f0; }
+
+        /* Canvas Draw / Sign Overlay elements */
+        .signature-box { border: 1px solid #cbd5e1; background: white; border-radius: 8px; margin-bottom: 1rem; position: relative; width: 100%; height: 200px; touch-action: none; }
+        canvas { width: 100%; height: 100%; display: block; border-radius: 8px; cursor: crosshair; }
+        .canvas-controls { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+        .btn-sub { background: #f1f5f9; border: 1px solid #cbd5e1; padding: 0.4rem 1rem; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer; color: #475569; }
+        .btn-sub:hover { background: #e2e8f0; }
+
+        .status-msg { margin-top: 1rem; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; display: none; font-weight: 500; }
+        .status-success { display: block; background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; }
+        .status-working { display: block; background: #fef9c3; color: #854d0e; border: 1px solid #fef08a; }
+
+        .range-group { display: flex; flex-direction: column; gap: 0.4rem; margin-bottom: 1rem; }
+        .range-group label { font-size: 0.85rem; font-weight: 600; color: #475569; }
+        .range-group input { padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>PDFKit Privacy Engine</h1>
+        <p>Advanced batch operations executed entirely in browser memory. Local sandboxing keeps data anonymous.</p>
+        <span class="privacy-badge">🔒 100% Client-Side Sandbox</span>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <div class="card-title">🛠️ Tool Matrix</div>
+            <div class="menu-list">
+                <button class="menu-btn active" onclick="switchToolPanel('merge')">📂 Batch Merge PDFs</button>
+                <button class="menu-btn" onclick="switchToolPanel('split')">✂️ Split PDF Pages</button>
+                <button class="menu-btn" onclick="switchToolPanel('forms')">📝 Form Fill & Flatten</button>
+                <button class="menu-btn" onclick="switchToolPanel('sign')">✍️ Draw & Inject Signatures</button>
+            </div>
+        </div>
+
+        <div class="card" style="width:100%;">
+            
+            <div id="panel-merge" class="workspace-panel active">
+                <div class="card-title">📂 High-Capacity Batch Merge (Supports up to 50+ Files)</div>
+                <div class="file-dropzone">
+                    <p> Drag & Drop or Click to Add Multiple PDFs</p>
+                    <input type="file" id="input-merge-files" accept="application/pdf" multiple onchange="handleFileSelections('merge')">
+                </div>
+                <div class="file-badge-list" id="list-merge-files"></div>
+                <button class="btn-action" id="btn-run-merge" disabled onclick="processPdfBatchMerge()">Merge Documents</button>
+            </div>
+
+            <div id="panel-split" class="workspace-panel">
+                <div class="card-title">✂️ Discrete Page Extraction / Splitting</div>
+                <div class="file-dropzone">
+                    <p>Select Target PDF to Extract Pages From</p>
+                    <input type="file" id="input-split-file" accept="application/pdf" onchange="handleFileSelections('split')">
+                </div>
+                <div class="file-badge-list" id="list-split-file"></div>
+                <div class="range-group">
+                    <label for="split-range-start">Target Start Page Index</label>
+                    <input type="number" id="split-range-start" value="1" min="1">
+                    <label for="split-range-end">Target End Page Index</label>
+                    <input type="number" id="split-range-end" value="1" min="1">
+                </div>
+                <button class="btn-action" id="btn-run-split" disabled onclick="processPdfSplit()">Extract Specified Range</button>
+            </div>
+
+            <div id="panel-forms" class="workspace-panel">
+                <div class="card-title">📝 Client-Side AcroForm Interactive Filler</div>
+                <div class="file-dropzone">
+                    <p>Load Fillable AcroForm Document Structure</p>
+                    <input type="file" id="input-form-file" accept="application/pdf" onchange="handleFileSelections('forms')">
+                </div>
+                <div class="file-badge-list" id="list-form-file"></div>
+                <div id="form-interactive-fields-container" style="margin-bottom:1rem; display:flex; flex-direction:column; gap:0.75rem;"></div>
+                <button class="btn-action" id="btn-run-forms" disabled onclick="processFormFlattenAndSave()">Flatten & Save Form</button>
+            </div>
+
+            <div id="panel-sign" class="workspace-panel">
+                <div class="card-title">✍️ Interactive Vector Signature Placement</div>
+                <div class="file-dropzone">
+                    <p>Upload PDF to Digitally Sign</p>
+                    <input type="file" id="input-sign-file" accept="application/pdf" onchange="handleFileSelections('sign')">
+                </div>
+                <div class="file-badge-list" id="list-sign-file"></div>
+                
+                <label style="font-size:0.85rem; font-weight:600; color:#475569; display:block; margin-bottom:0.4rem;">Draw your signature inside the sandbox canvas below:</label>
+                <div class="signature-box">
+                    <canvas id="signatureCanvas"></canvas>
+                </div>
+                <div class="canvas-controls">
+                    <button class="btn-sub" onclick="clearDrawCanvas()">Clear Canvas</button>
+                </div>
+
+                <button class="btn-action" id="btn-run-sign" disabled onclick="processPdfSignatureInjection()">Stamp Signature to Page 1</button>
+            </div>
+
+            <div id="statusReportingMonitor" class="status-msg"></div>
+
+        </div>
+    </div>
+
+    <script>
+        // Internal Staging State Cache Matrix
+        let globalState = {
+            mergeFiles: [],
+            splitFile: null,
+            formFile: null,
+            signFile: null,
+            formFieldsRef: null,
+            activePdfLibDoc: null
+        };
+
+        // Canvas Sketch Initialization
+        const canvas = document.getElementById('signatureCanvas');
+        const ctx = canvas.getContext('2d');
+        let isDrawing = false;
+
+        function initializeCanvasSizing() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#000000';
+        }
+
+        window.addEventListener('resize', initializeCanvasSizing);
+        setTimeout(initializeCanvasSizing, 200);
+
+        // Track Pointer Actions on Canvas Context
+        function getPointerPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const pos = getPointerPos(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            e.preventDefault();
+            const pos = getPointerPos(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        }
+
+        function stopDrawing() { isDrawing = false; }
+
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseleave', stopDrawing);
+
+        canvas.addEventListener('touchstart', startDrawing, {passive: false});
+        canvas.addEventListener('touchmove', draw, {passive: false});
+        canvas.addEventListener('touchend', stopDrawing);
+
+        function clearDrawCanvas() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function switchToolPanel(panelId) {
+            document.querySelectorAll('.menu-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.workspace-panel').forEach(p => p.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            document.getElementById(`panel-${panelId}`).classList.add('active');
+            hideFeedbackMonitor();
+            if(panelId === 'sign') setTimeout(initializeCanvasSizing, 100);
+        }
+
+        function showFeedbackMonitor(text, type) {
+            const monitor = document.getElementById('statusReportingMonitor');
+            monitor.className = `status-msg status-${type}`;
+            monitor.innerText = text;
+        }
+
+        function hideFeedbackMonitor() {
+            document.getElementById('statusReportingMonitor').style.display = 'none';
+        }
+
+        // Parse local storage allocations safely
+        function handleFileSelections(mode) {
+            hideFeedbackMonitor();
+            if (mode === 'merge') {
+                const files = Array.from(document.getElementById('input-merge-files').files);
+                globalState.mergeFiles = [...globalState.mergeFiles, ...files];
+                renderFileBadges('merge', globalState.mergeFiles);
+                document.getElementById('btn-run-merge').disabled = globalState.mergeFiles.length < 2;
+            }
+            if (mode === 'split') {
+                globalState.splitFile = document.getElementById('input-split-file').files[0];
+                renderFileBadges('split', globalState.splitFile ? [globalState.splitFile] : []);
+                document.getElementById('btn-run-split').disabled = !globalState.splitFile;
+            }
+            if (mode === 'forms') {
+                globalState.formFile = document.getElementById('input-form-file').files[0];
+                renderFileBadges('forms', globalState.formFile ? [globalState.formFile] : []);
+                if (globalState.formFile) parseInteractiveAcroFormFields();
+            }
+            if (mode === 'sign') {
+                globalState.signFile = document.getElementById('input-sign-file').files[0];
+                renderFileBadges('sign', globalState.signFile ? [globalState.signFile] : []);
+                document.getElementById('btn-run-sign').disabled = !globalState.signFile;
+            }
+        }
+
+        function renderFileBadges(mode, fileArray) {
+            const listEl = document.getElementById(`list-${mode}-files` || `list-${mode}-file`);
+            const fallbackEl = document.getElementById(`list-${mode}-file`);
+            const targetList = listEl || fallbackEl;
+            targetList.innerHTML = '';
+            fileArray.forEach((file, index) => {
+                const badge = document.createElement('div');
+                badge.className = 'file-badge';
+                badge.innerHTML = `<span>📄 ${file.name} (${(file.size/1024).toFixed(1)} KB)</span>`;
+                targetList.appendChild(badge);
+            });
+        }
+
+        // --- CORE PDF-LIB ENGINES ---
+
+        async function processPdfBatchMerge() {
+            try {
+                showFeedbackMonitor("Processing local data assembly matrix...", "working");
+                const mergedPdf = await PDFLib.PDFDocument.create();
+                
+                for (const file of globalState.mergeFiles) {
+                    const bytes = await file.arrayBuffer();
+                    const doc = await PDFLib.PDFDocument.load(bytes);
+                    const pages = await mergedPdf.copyPages(doc, doc.getPageIndices());
+                    pages.forEach(p => mergedPdf.addPage(p));
+                }
+
+                const outputBytes = await mergedPdf.save();
+                triggerLocalDownload(outputBytes, `pdfkit_merged_${Date.now()}.pdf`);
+                showFeedbackMonitor("Batch operation completed inside memory space successfully.", "success");
+            } catch (err) {
+                showFeedbackMonitor(`Operation fault: ${err.message}`, "working");
+            }
+        }
+
+        async function processPdfSplit() {
+            try {
+                showFeedbackMonitor("Extracting layout subsets...", "working");
+                const startRange = parseInt(document.getElementById('split-range-start').value) - 1;
+                const endRange = parseInt(document.getElementById('split-range-end').value) - 1;
+
+                const bytes = await globalState.splitFile.arrayBuffer();
+                const sourceDoc = await PDFLib.PDFDocument.load(bytes);
+                const totalPages = sourceDoc.getPageCount();
+
+                if (startRange < 0 || endRange >= totalPages || startRange > endRange) {
+                    throw new Error(`Invalid page bounds. This document contains exactly ${totalPages} pages.`);
+                }
+
+                const splitPdf = await PDFLib.PDFDocument.create();
+                const indices = Array.from({length: (endRange - startRange) + 1}, (_, i) => startRange + i);
+                const copiedPages = await splitPdf.copyPages(sourceDoc, indices);
+                copiedPages.forEach(p => splitPdf.addPage(p));
+
+                const outputBytes = await splitPdf.save();
+                triggerLocalDownload(outputBytes, `pdfkit_extracted_${Date.now()}.pdf`);
+                showFeedbackMonitor("Pages isolated successfully.", "success");
+            } catch (err) {
+                showFeedbackMonitor(`Operation fault: ${err.message}`, "working");
+            }
+        }
+
+        async function parseInteractiveAcroFormFields() {
+            try {
+                showFeedbackMonitor("Parsing interactive Form structure schemas...", "working");
+                const container = document.getElementById('form-interactive-fields-container');
+                container.innerHTML = '';
+                
+                const bytes = await globalState.formFile.arrayBuffer();
+                globalState.activePdfLibDoc = await PDFLib.PDFDocument.load(bytes);
+                
+                const form = globalState.activePdfLibDoc.getForm();
+                const fields = form.getFields();
+
+                if(fields.length === 0) {
+                    container.innerHTML = `<p style="font-size:0.85rem; color:#ef4444; font-weight:600;">⚠️ Notice: No native interactive AcroForm fields detected. Rendering basic structure.</p>`;
+                    document.getElementById('btn-run-forms').disabled = false;
+                    return;
+                }
+
+                fields.forEach(field => {
+                    const type = field.constructor.name;
+                    const name = field.getName();
+                    
+                    const fieldWrapper = document.createElement('div');
+                    fieldWrapper.style.cssText = "display:flex; flex-direction:column; gap:0.25rem;";
+                    
+                    const label = document.createElement('label');
+                    label.style.cssText = "font-size:0.8rem; font-weight:700; color:#475569;";
+                    label.innerText = `Field: ${name} [${type.replace('PDF','')}]`;
+                    
+                    const input = document.createElement('input');
+                    input.type = "text";
+                    input.className = "acro-dynamic-input";
+                    input.dataset.fieldName = name;
+                    input.style.cssText = "padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px;";
+                    
+                    fieldWrapper.appendChild(label);
+                    fieldWrapper.appendChild(input);
+                    container.appendChild(fieldWrapper);
+                });
+
+                document.getElementById('btn-run-forms').disabled = false;
+                showFeedbackMonitor(`Detected ${fields.length} map paths. Form ready to fill.`, "success");
+            } catch (err) {
+                showFeedbackMonitor(`Interactive Exception: ${err.message}`, "working");
+            }
+        }
+
+        async function processFormFlattenAndSave() {
+            try {
+                showFeedbackMonitor("Serializing variable arrays into binary space...", "working");
+                const form = globalState.activePdfLibDoc.getForm();
+                const textInputs = document.querySelectorAll('.acro-dynamic-input');
+                
+                textInputs.forEach(input => {
+                    const fieldName = input.dataset.fieldName;
+                    const val = input.value.trim();
+                    if(val) {
+                        try {
+                            const field = form.getTextField(fieldName);
+                            field.setText(val);
+                        } catch(e) {
+                            // Suppress type mismatches for non-text components elegantly
+                        }
+                    }
+                });
+
+                // Flatten elements into uneditable vectors for print safety
+                form.flatten();
+                
+                const outputBytes = await globalState.activePdfLibDoc.save();
+                triggerLocalDownload(outputBytes, `pdfkit_filled_flattened_${Date.now()}.pdf`);
+                showFeedbackMonitor("Form fields parsed and locked successfully.", "success");
+            } catch (err) {
+                showFeedbackMonitor(`Processing failure: ${err.message}`, "working");
+            }
+        }
+
+        async function processPdfSignatureInjection() {
+            try {
+                showFeedbackMonitor("Compiling vector raster parameters...", "working");
+                const bytes = await globalState.signFile.arrayBuffer();
+                const doc = await PDFLib.PDFDocument.load(bytes);
+                
+                // Convert internal vector snapshot arrays to PNG matrix formats
+                const dataUrl = canvas.toDataURL('image/png');
+                const sigImageBytes = await fetch(dataUrl).then(res => res.arrayBuffer());
+                const pngImage = await doc.embedPng(sigImageBytes);
+
+                const pages = doc.getPages();
+                if (pages.length === 0) throw new Error("Document structure lacks valid page dimensions.");
+                
+                const firstPage = pages[0];
+                const { width, height } = firstPage.getSize();
+
+                // Draw signature into bottom left quadrant predictably
+                firstPage.drawImage(pngImage, {
+                    x: 50,
+                    y: 50,
+                    width: 200,
+                    height: 80,
+                });
+
+                const outputBytes = await doc.save();
+                triggerLocalDownload(outputBytes, `pdfkit_signed_${Date.now()}.pdf`);
+                showFeedbackMonitor("Signature stamped successfully onto Page 1.", "success");
+            } catch (err) {
+                showFeedbackMonitor(`Processing failure: ${err.message}`, "working");
+            }
+        }
+
+        function triggerLocalDownload(bytes, filename) {
+            const blob = new Blob([bytes], { type: "application/pdf" });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
